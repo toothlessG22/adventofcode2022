@@ -93,6 +93,22 @@ def apply_state_update(update, state):
         update[7] + state[7],
     )
 
+def too_many_bots(blueprint, ore_robots, clay_robots, obsidian_robots):
+    ore_ore_cost = get_ore_robot_cost(blueprint)
+    clay_ore_cost = get_clay_robot_cost(blueprint)
+    obs_ore_cost, obs_clay_cost = get_obsidian_robot_cost(blueprint)
+    geo_ore_cost, geo_obs_cost = get_geode_robot_cost(blueprint)
+
+    if ore_robots > max([ore_ore_cost, clay_ore_cost, obs_ore_cost, geo_ore_cost]):
+        return True
+
+    if clay_robots > obs_clay_cost:
+        return True
+
+    if obsidian_robots > geo_obs_cost:
+        return True
+
+    return False
 
 def passes_fake_sim(blueprint, state, time, target):
     num_geode_robots, num_obsidian_robots, num_clay_robots, num_ore_robots, geode, obsidian, clay, ore = state
@@ -141,6 +157,7 @@ best_time_cache_hits = 0
 hardcode_hits = 0
 best_geode_hits = 0
 best_geode_hit_times = {}
+too_many_bots_hits = 0
 
 def back_track(blueprint, state, time, cache, bc_cache, best_time_cache, best_geode_cache):
     num_geode_robots, num_obsidian_robots, num_clay_robots, num_ore_robots, geode, obsidian, clay, ore = state
@@ -151,11 +168,12 @@ def back_track(blueprint, state, time, cache, bc_cache, best_time_cache, best_ge
     global hardcode_hits
     global best_geode_hits
     global best_geode_hit_times
+    global too_many_bots_hits
 
     calls += 1
 
     if calls % 100000 == 0:
-        print("calls", calls, "state_cache", state_cache_hits, "best_time_cache", best_time_cache_hits, "harcode_hits", hardcode_hits, "best_geode", best_geode_hits, best_geode_hit_times,  best_geode_cache[0])
+        print("calls", calls, "state_cache", state_cache_hits, "best_time_cache", best_time_cache_hits, "harcode_hits", hardcode_hits, "best_geode", best_geode_hits, best_geode_hit_times,  best_geode_cache[0], "too many bots", too_many_bots_hits)
 
     if time == 1:
         hardcode_hits += 1
@@ -168,6 +186,11 @@ def back_track(blueprint, state, time, cache, bc_cache, best_time_cache, best_ge
             return cache[state][time]
     else:
         cache[state] = {}
+
+    if too_many_bots(blueprint, num_ore_robots, num_clay_robots, num_obsidian_robots):
+        too_many_bots_hits += 1
+        cache[state][time] = -1
+        return -1
 
     if state in best_time_cache:
         if best_time_cache[state] > time:
